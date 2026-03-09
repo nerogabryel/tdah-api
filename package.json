@@ -1,0 +1,24 @@
+{
+  "name": "tdah-api",
+  "version": "1.0.0",
+  "description": "Backend API para TDAH Portal — Fastify + pg pool",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^5.2.1",
+    "@fastify/cors": "^11.0.1",
+    "pg": "^8.13.1",
+    "jose": "^6.0.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "tsx": "^4.19.2",
+    "@types/pg": "^8.11.11",
+    "@types/node": "^22.12.0"
+  }
+}
