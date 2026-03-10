@@ -5,9 +5,9 @@ const { Pool } = pg
 
 export const pool = new Pool({
   connectionString: config.DATABASE_URL,
-  max: 25,
+  max: 50,
   idleTimeoutMillis: 30_000,
-  connectionTimeoutMillis: 5_000,
+  connectionTimeoutMillis: 10_000,
 })
 
 // Log de conexão no boot

@@ -21,20 +21,20 @@ await app.register(cors, {
   credentials: true,
 })
 
-// Health check
+// Health check — usa pool.query() (não pool.connect()) para não bloquear conexão
 app.get('/api/health', async (_request, reply) => {
-  const dbOk = await checkConnection()
   const poolStatus = {
     total: pool.totalCount,
     idle: pool.idleCount,
     waiting: pool.waitingCount,
   }
 
-  if (!dbOk) {
+  try {
+    await pool.query('SELECT 1')
+    return reply.status(200).send({ status: 'ok', db: true, pool: poolStatus })
+  } catch {
     return reply.status(503).send({ status: 'unhealthy', db: false, pool: poolStatus })
   }
-
-  return reply.status(200).send({ status: 'ok', db: true, pool: poolStatus })
 })
 
 // Registrar rotas
