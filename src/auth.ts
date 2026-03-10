@@ -1,4 +1,4 @@
-import { jwtVerify } from 'jose'
+import { jwtVerify, createRemoteJWKSet } from 'jose'
 import type { FastifyRequest, FastifyReply } from 'fastify'
 import { config } from './config.js'
 
@@ -9,7 +9,16 @@ declare module 'fastify' {
   }
 }
 
-const secret = new TextEncoder().encode(config.SUPABASE_JWT_SECRET)
+// JWKS — busca e cacheia as chaves públicas do Supabase Auth
+// Suporta automaticamente HS256 (legacy) + ES256 (ECC P-256 atual)
+const JWKS = createRemoteJWKSet(
+  new URL(`${config.SUPABASE_URL}/auth/v1/.well-known/jwks.json`),
+)
+
+// Fallback: HS256 com shared secret (caso JWKS falhe)
+const legacySecret = config.SUPABASE_JWT_SECRET
+  ? new TextEncoder().encode(config.SUPABASE_JWT_SECRET)
+  : null
 
 export async function authMiddleware(
   request: FastifyRequest,
@@ -23,9 +32,8 @@ export async function authMiddleware(
   const token = authHeader.slice(7)
 
   try {
-    const { payload } = await jwtVerify(token, secret, {
-      algorithms: ['HS256'],
-    })
+    // Tenta JWKS primeiro (suporta HS256 + ES256)
+    const { payload } = await jwtVerify(token, JWKS)
 
     const sub = payload.sub
     if (!sub) {
@@ -33,7 +41,27 @@ export async function authMiddleware(
     }
 
     request.userId = sub
-  } catch {
+  } catch (jwksError) {
+    // Fallback: tenta HS256 com legacy secret
+    if (legacySecret) {
+      try {
+        const { payload } = await jwtVerify(token, legacySecret, {
+          algorithms: ['HS256'],
+        })
+
+        const sub = payload.sub
+        if (!sub) {
+          return reply.status(401).send({ error: 'Token inválido: sem sub' })
+        }
+
+        request.userId = sub
+        return
+      } catch {
+        // Ambos falharam
+      }
+    }
+
+    console.error('[auth] JWT inválido:', jwksError)
     return reply.status(401).send({ error: 'Token inválido ou expirado' })
   }
 }
